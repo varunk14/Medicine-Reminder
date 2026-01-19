@@ -117,8 +117,7 @@ test-results/
 .temp/
 tmp/
 
-# Claude/AI context files (keep for development, exclude from repo)
-CLAUDE.md
+
 
 # Documentation (if you want to exclude)
 # PRD.md
