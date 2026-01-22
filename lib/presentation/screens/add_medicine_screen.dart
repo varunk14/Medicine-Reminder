@@ -19,6 +19,19 @@ class _AddMedicineScreenState extends State<AddMedicineScreen> {
 
   TimeOfDay _selectedTime = TimeOfDay.now();
   bool _isLoading = false;
+  bool _isDaily = true;
+  final Set<int> _selectedDays = {};
+
+  // Day names with their DateTime.weekday values (1=Monday, 7=Sunday)
+  static const List<Map<String, dynamic>> _days = [
+    {'name': 'Mon', 'value': 1},
+    {'name': 'Tue', 'value': 2},
+    {'name': 'Wed', 'value': 3},
+    {'name': 'Thu', 'value': 4},
+    {'name': 'Fri', 'value': 5},
+    {'name': 'Sat', 'value': 6},
+    {'name': 'Sun', 'value': 7},
+  ];
 
   @override
   void dispose() {
@@ -147,9 +160,94 @@ class _AddMedicineScreenState extends State<AddMedicineScreen> {
                   ),
                 ),
               ),
+              const SizedBox(height: 24),
+
+              // Schedule Type
+              Text(
+                'Schedule',
+                style: Theme.of(context).textTheme.labelLarge,
+              ),
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  Expanded(
+                    child: _buildScheduleOption(
+                      label: 'Daily',
+                      isSelected: _isDaily,
+                      onTap: () {
+                        setState(() {
+                          _isDaily = true;
+                          _selectedDays.clear();
+                        });
+                      },
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: _buildScheduleOption(
+                      label: 'Specific Days',
+                      isSelected: !_isDaily,
+                      onTap: () {
+                        setState(() {
+                          _isDaily = false;
+                        });
+                      },
+                    ),
+                  ),
+                ],
+              ),
+
+              // Day Selection (shown only when Specific Days is selected)
+              if (!_isDaily) ...[
+                const SizedBox(height: 16),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: _days.map((day) {
+                    final isSelected = _selectedDays.contains(day['value']);
+                    return FilterChip(
+                      label: Text(day['name']),
+                      selected: isSelected,
+                      onSelected: (selected) {
+                        setState(() {
+                          if (selected) {
+                            _selectedDays.add(day['value']);
+                          } else {
+                            _selectedDays.remove(day['value']);
+                          }
+                        });
+                      },
+                      selectedColor: AppTheme.primaryLightColor,
+                      checkmarkColor: AppTheme.primaryColor,
+                      labelStyle: TextStyle(
+                        color: isSelected
+                            ? AppTheme.primaryColor
+                            : AppTheme.textSecondaryColor,
+                        fontWeight:
+                            isSelected ? FontWeight.w600 : FontWeight.normal,
+                      ),
+                    );
+                  }).toList(),
+                ),
+                if (_selectedDays.isEmpty)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 8),
+                    child: Text(
+                      'Please select at least one day',
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                            color: AppTheme.errorColor,
+                          ),
+                    ),
+                  ),
+              ],
+
               const SizedBox(height: 8),
               Text(
-                'You will be reminded daily at this time',
+                _isDaily
+                    ? 'You will be reminded daily at this time'
+                    : _selectedDays.isEmpty
+                        ? 'Select the days you want to be reminded'
+                        : 'You will be reminded on selected days at this time',
                 style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                       color: AppTheme.textSecondaryColor,
                       fontStyle: FontStyle.italic,
@@ -205,8 +303,55 @@ class _AddMedicineScreenState extends State<AddMedicineScreen> {
     }
   }
 
+  Widget _buildScheduleOption({
+    required String label,
+    required bool isSelected,
+    required VoidCallback onTap,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(8),
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 12),
+        decoration: BoxDecoration(
+          color: isSelected
+              ? AppTheme.primaryLightColor.withValues(alpha: 0.3)
+              : AppTheme.surfaceColor,
+          border: Border.all(
+            color: isSelected ? AppTheme.primaryColor : Colors.grey.shade300,
+            width: isSelected ? 2 : 1,
+          ),
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Center(
+          child: Text(
+            label,
+            style: TextStyle(
+              color: isSelected
+                  ? AppTheme.primaryColor
+                  : AppTheme.textSecondaryColor,
+              fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
   Future<void> _saveMedicine() async {
     if (!_formKey.currentState!.validate()) {
+      return;
+    }
+
+    // Validate day selection if specific days is chosen
+    if (!_isDaily && _selectedDays.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Please select at least one day'),
+          backgroundColor: AppTheme.errorColor,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
       return;
     }
 
@@ -220,6 +365,7 @@ class _AddMedicineScreenState extends State<AddMedicineScreen> {
       dosage: _dosageController.text,
       hour: _selectedTime.hour,
       minute: _selectedTime.minute,
+      selectedDays: _isDaily ? [] : _selectedDays.toList(),
     );
 
     setState(() {

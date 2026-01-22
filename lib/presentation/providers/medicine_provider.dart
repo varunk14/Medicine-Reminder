@@ -49,6 +49,7 @@ class MedicineProvider extends ChangeNotifier {
     required String dosage,
     required int hour,
     required int minute,
+    List<int> selectedDays = const [],
   }) async {
     try {
       final medicine = Medicine(
@@ -58,6 +59,7 @@ class MedicineProvider extends ChangeNotifier {
         hour: hour,
         minute: minute,
         isActive: true,
+        selectedDays: selectedDays,
       );
 
       await _repository.addMedicine(medicine);

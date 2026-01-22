@@ -23,13 +23,14 @@ class MedicineAdapter extends TypeAdapter<Medicine> {
       hour: fields[3] as int,
       minute: fields[4] as int,
       isActive: fields[5] as bool,
+      selectedDays: (fields[6] as List<dynamic>?)?.cast<int>() ?? [],
     );
   }
 
   @override
   void write(BinaryWriter writer, Medicine obj) {
     writer
-      ..writeByte(6)
+      ..writeByte(7)
       ..writeByte(0)
       ..write(obj.id)
       ..writeByte(1)
@@ -41,7 +42,9 @@ class MedicineAdapter extends TypeAdapter<Medicine> {
       ..writeByte(4)
       ..write(obj.minute)
       ..writeByte(5)
-      ..write(obj.isActive);
+      ..write(obj.isActive)
+      ..writeByte(6)
+      ..write(obj.selectedDays);
   }
 
   @override

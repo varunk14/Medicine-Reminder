@@ -72,6 +72,23 @@ class MedicineCard extends StatelessWidget {
                               fontWeight: FontWeight.w500,
                             ),
                       ),
+                      const SizedBox(width: 12),
+                      const Icon(
+                        Icons.calendar_today,
+                        size: 16,
+                        color: AppTheme.textSecondaryColor,
+                      ),
+                      const SizedBox(width: 4),
+                      Flexible(
+                        child: Text(
+                          medicine.selectedDaysText,
+                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                color: AppTheme.textSecondaryColor,
+                              ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
                     ],
                   ),
                 ],

@@ -22,6 +22,12 @@ class Medicine extends HiveObject {
   @HiveField(5)
   final bool isActive;
 
+  /// Days of the week when reminder should trigger.
+  /// Empty list means daily (all days).
+  /// Values: 1=Monday, 2=Tuesday, ..., 7=Sunday (DateTime.weekday format)
+  @HiveField(6)
+  final List<int> selectedDays;
+
   Medicine({
     required this.id,
     required this.name,
@@ -29,6 +35,7 @@ class Medicine extends HiveObject {
     required this.hour,
     required this.minute,
     this.isActive = true,
+    this.selectedDays = const [],
   });
 
   /// Creates a copy of this Medicine with the given fields replaced
@@ -39,6 +46,7 @@ class Medicine extends HiveObject {
     int? hour,
     int? minute,
     bool? isActive,
+    List<int>? selectedDays,
   }) {
     return Medicine(
       id: id ?? this.id,
@@ -47,7 +55,19 @@ class Medicine extends HiveObject {
       hour: hour ?? this.hour,
       minute: minute ?? this.minute,
       isActive: isActive ?? this.isActive,
+      selectedDays: selectedDays ?? this.selectedDays,
     );
+  }
+
+  /// Returns true if this is a daily reminder (no specific days selected)
+  bool get isDaily => selectedDays.isEmpty;
+
+  /// Returns formatted string of selected days (e.g., "Sun", "Mon, Wed, Fri")
+  String get selectedDaysText {
+    if (isDaily) return 'Daily';
+    const dayNames = ['', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+    final sortedDays = List<int>.from(selectedDays)..sort();
+    return sortedDays.map((d) => dayNames[d]).join(', ');
   }
 
   /// Returns the time in minutes since midnight for sorting
@@ -58,7 +78,7 @@ class Medicine extends HiveObject {
 
   @override
   String toString() {
-    return 'Medicine(id: $id, name: $name, dosage: $dosage, time: $hour:$minute, active: $isActive)';
+    return 'Medicine(id: $id, name: $name, dosage: $dosage, time: $hour:$minute, active: $isActive, days: $selectedDaysText)';
   }
 
   @override

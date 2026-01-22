@@ -106,7 +106,7 @@ coverage/
 test-results/
 *.lcov
 
-# Generated files (keep .g.dart for Hive adapters)
+
 # *.g.dart
 *.freezed.dart
 *.mocks.dart
@@ -119,5 +119,4 @@ tmp/
 
 
 
-# Documentation (if you want to exclude)
-# PRD.md
+

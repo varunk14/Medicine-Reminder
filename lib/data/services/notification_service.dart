@@ -80,11 +80,10 @@ class NotificationService {
     debugPrint('Notification tapped: ${response.payload}');
   }
 
-  /// Schedule a daily notification for a medicine
+  /// Schedule notification(s) for a medicine
+  /// For daily medicines, schedules one notification.
+  /// For specific days, schedules one notification per selected day.
   Future<void> scheduleMedicineReminder(Medicine medicine) async {
-    final scheduledTime = TimeUtils.getNextOccurrence(medicine.hour, medicine.minute);
-    final tzScheduledTime = tz.TZDateTime.from(scheduledTime, tz.local);
-
     // Android notification details
     const androidDetails = AndroidNotificationDetails(
       'medicine_reminder_channel',
@@ -109,28 +108,93 @@ class NotificationService {
       iOS: iosDetails,
     );
 
-    await _notifications.zonedSchedule(
-      medicine.notificationId,
-      'Medicine Reminder',
-      'Time to take ${medicine.name} - ${medicine.dosage}',
-      tzScheduledTime,
-      notificationDetails,
-      androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
-      uiLocalNotificationDateInterpretation:
-          UILocalNotificationDateInterpretation.absoluteTime,
-      matchDateTimeComponents: DateTimeComponents.time,
-      payload: medicine.id,
-    );
+    if (medicine.isDaily) {
+      // Daily reminder - use time-based matching
+      final scheduledTime = TimeUtils.getNextOccurrence(medicine.hour, medicine.minute);
+      final tzScheduledTime = tz.TZDateTime.from(scheduledTime, tz.local);
 
-    debugPrint(
-      'Scheduled notification for ${medicine.name} at ${TimeUtils.formatTime(medicine.hour, medicine.minute)}',
-    );
+      await _notifications.zonedSchedule(
+        medicine.notificationId,
+        'Medicine Reminder',
+        'Time to take ${medicine.name} - ${medicine.dosage}',
+        tzScheduledTime,
+        notificationDetails,
+        androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+        uiLocalNotificationDateInterpretation:
+            UILocalNotificationDateInterpretation.absoluteTime,
+        matchDateTimeComponents: DateTimeComponents.time,
+        payload: medicine.id,
+      );
+
+      debugPrint(
+        'Scheduled daily notification for ${medicine.name} at ${TimeUtils.formatTime(medicine.hour, medicine.minute)}',
+      );
+    } else {
+      // Specific days reminder - schedule one notification per day
+      for (final day in medicine.selectedDays) {
+        final scheduledTime = _getNextOccurrenceForDay(
+          medicine.hour,
+          medicine.minute,
+          day,
+        );
+        final tzScheduledTime = tz.TZDateTime.from(scheduledTime, tz.local);
+
+        // Create unique notification ID for each day
+        final notificationId = _getNotificationIdForDay(medicine, day);
+
+        await _notifications.zonedSchedule(
+          notificationId,
+          'Medicine Reminder',
+          'Time to take ${medicine.name} - ${medicine.dosage}',
+          tzScheduledTime,
+          notificationDetails,
+          androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+          uiLocalNotificationDateInterpretation:
+              UILocalNotificationDateInterpretation.absoluteTime,
+          matchDateTimeComponents: DateTimeComponents.dayOfWeekAndTime,
+          payload: medicine.id,
+        );
+
+        final dayName = ['', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'][day];
+        debugPrint(
+          'Scheduled notification for ${medicine.name} on $dayName at ${TimeUtils.formatTime(medicine.hour, medicine.minute)}',
+        );
+      }
+    }
+  }
+
+  /// Get next occurrence for a specific day of week
+  DateTime _getNextOccurrenceForDay(int hour, int minute, int targetDay) {
+    final now = DateTime.now();
+    var scheduledDate = DateTime(now.year, now.month, now.day, hour, minute);
+
+    // Find the next occurrence of the target day
+    while (scheduledDate.weekday != targetDay || scheduledDate.isBefore(now)) {
+      scheduledDate = scheduledDate.add(const Duration(days: 1));
+    }
+
+    return scheduledDate;
+  }
+
+  /// Generate unique notification ID for a specific day
+  int _getNotificationIdForDay(Medicine medicine, int day) {
+    // Combine medicine ID hash with day to create unique ID
+    return (medicine.id.hashCode + day * 1000).abs() % 2147483647;
   }
 
   /// Cancel a specific medicine reminder
+  /// Cancels all notifications for the medicine (daily or per-day)
   Future<void> cancelMedicineReminder(Medicine medicine) async {
+    // Cancel the main notification ID (for daily reminders)
     await _notifications.cancel(medicine.notificationId);
-    debugPrint('Cancelled notification for ${medicine.name}');
+
+    // Cancel all day-specific notifications (for specific days reminders)
+    for (int day = 1; day <= 7; day++) {
+      final notificationId = _getNotificationIdForDay(medicine, day);
+      await _notifications.cancel(notificationId);
+    }
+
+    debugPrint('Cancelled all notifications for ${medicine.name}');
   }
 
   /// Cancel all notifications
